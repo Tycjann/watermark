@@ -49,6 +49,19 @@ const prepareOutputFilename = (filename) => {
 
 }
 
+const otherImageConversions = async function (inputFile, outputFile, type) {
+  try {
+    const image = await Jimp.read(inputFile);
+    if (type === 'contrast') await image.contrast(1).writeAsync(outputFile);
+    if (type === 'brightness') await image.brightness(0.5).writeAsync(outputFile);
+    if (type === 'greyscale') await image.greyscale().writeAsync(outputFile);
+    if (type === 'invert') await image.invert().writeAsync(outputFile);
+  }
+  catch (error) {
+    console.log('Something went wrong... Try again.')
+  }
+}
+
 const startApp = async () => {
 
   // Ask if user is ready
@@ -62,18 +75,75 @@ const startApp = async () => {
   if (!answer.start) process.exit();
 
   // ask about input file and watermark type
+  // const options = await inquirer.prompt([{
+  //   name: 'inputImage',
+  //   type: 'input',
+  //   message: 'What file do you want to mark?',
+  //   default: 'test.jpg',
+  // }, {
+  //   name: 'watermarkType',
+  //   type: 'list',
+  //   choices: ['Text watermark', 'Image watermark'],
+  // }]);
+
   const options = await inquirer.prompt([{
     name: 'inputImage',
     type: 'input',
     message: 'What file do you want to mark?',
     default: 'test.jpg',
-  }, {
-    name: 'watermarkType',
+  }]);
+
+  const optionsOther = await inquirer.prompt([{
+    name: 'type',
     type: 'list',
+    message: 'Do you want to edit a photo?',
+    choices: ['No', 'Make image brighter', 'Increase contrast', 'Make image B&W', 'Invert image'],
+  }]);
+
+  const originalImage = dirImgName + options.inputImage;
+  const outputImage = dirImgName + prepareOutputFilename(options.inputImage);
+  let inputImage = dirImgName + options.inputImage; 
+
+  switch (optionsOther.type) {
+    case 'Make image brighter':
+      if (fs.existsSync(originalImage))
+        otherImageConversions(inputImage, outputImage, 'brightness');
+      else
+        console.log('Something went wrong... Try again.');
+      break;
+    case 'Increase contrast':
+      if (fs.existsSync(originalImage)) 
+        otherImageConversions(inputImage, outputImage, 'contrast');
+      else
+        console.log('Something went wrong... Try again.');
+      break;
+    case 'Make image B&W':
+      if (fs.existsSync(originalImage))
+        otherImageConversions(inputImage, outputImage, 'greyscale');
+      else
+        console.log('Something went wrong... Try again.');
+      break;
+    case 'Invert image':
+      if (fs.existsSync(originalImage))
+        otherImageConversions(inputImage, outputImage, 'invert');
+      else
+        console.log('Something went wrong... Try again.');
+      break;
+  }
+
+  if (optionsOther.type !== 'No') inputImage = dirImgName + prepareOutputFilename(options.inputImage);
+
+  const optionsWatermark = await inquirer.prompt([{
+    name: 'type',
+    type: 'list',
+    message: 'How the type of watermark?',
     choices: ['Text watermark', 'Image watermark'],
   }]);
 
-  if (options.watermarkType === 'Text watermark') {
+
+
+
+  if (optionsWatermark.type === 'Text watermark') {
     const text = await inquirer.prompt([{
       name: 'value',
       type: 'input',
@@ -81,8 +151,8 @@ const startApp = async () => {
     }])
     options.watermarkText = text.value;
 
-    if (fs.existsSync(dirImgName + options.inputImage)) 
-      addTextWatermarkToImage(dirImgName + options.inputImage, dirImgName + prepareOutputFilename(options.inputImage), options.watermarkText);
+    if (fs.existsSync(originalImage))
+      addTextWatermarkToImage(inputImage, outputImage, options.watermarkText);
     else
       console.log('Something went wrong... Try again.');
   }
@@ -94,8 +164,8 @@ const startApp = async () => {
       default: 'logo.png',
     }])
     options.watermarkImage = image.filename;
-    if (fs.existsSync(dirImgName + options.inputImage) && fs.existsSync(dirImgName + options.watermarkImage))
-      addImageWatermarkToImage(dirImgName + options.inputImage, dirImgName + prepareOutputFilename(options.inputImage), dirImgName + options.watermarkImage);
+    if (fs.existsSync(originalImage) && fs.existsSync(dirImgName + options.watermarkImage))
+      addImageWatermarkToImage(inputImage, outputImage, dirImgName + options.watermarkImage);
     else
       console.log('Something went wrong... Try again.');
   }
